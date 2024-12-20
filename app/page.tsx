@@ -24,12 +24,23 @@ import { Button } from "@/components/ui/button";
 import { ReactSortable } from "react-sortablejs";
 import { getAlbumInfo } from "./api/actions";
 import { useTheme } from "next-themes";
+import { Toggle } from "@/components/ui/toggle";
+import { Moon, Sun } from "lucide-react";
 
 export default function Home() {
-    const { setTheme } = useTheme();
+    const { theme, setTheme } = useTheme();
     useEffect(() => {
-        setTheme("system");
+        setTheme("light");
     }, []);
+
+    function themeSwitch() {
+        if (theme === "light") {
+            setTheme("dark");
+        } else {
+            setTheme("light");
+        }
+    }
+
     const [songs, setSongs] = useState<Song[]>([]);
     const [searchResult, setSearchResult] = useState<AlbumQuery | null>(null);
     const notFoundLabel = () => {
@@ -112,11 +123,19 @@ export default function Home() {
 
     return (
         <>
-            <div className="p-2 w-1/2 space-y-8">
+            <div className="flex flex-col items-center p-2 space-y-4">
+                <Toggle
+                    variant="outline"
+                    aria-label="Toggle theme"
+                    onClick={themeSwitch}
+                    className="w-full max-w-4xl h-12"
+                >
+                    {theme === "light" ? <Sun /> : <Moon />}
+                </Toggle>
                 <Form {...searchForm}>
                     <form
                         onSubmit={searchForm.handleSubmit(search)}
-                        className="space-y-4"
+                        className="flex flex-col w-full max-w-4xl space-y-4"
                     >
                         <FormField
                             control={searchForm.control}
@@ -134,7 +153,7 @@ export default function Home() {
                                                 field.onChange(value);
                                             }}
                                         >
-                                            <SelectTrigger className="w-1/2">
+                                            <SelectTrigger>
                                                 <SelectValue placeholder="Select a source" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -157,7 +176,7 @@ export default function Home() {
                             control={searchForm.control}
                             name="link"
                             render={({ field }) => (
-                                <FormItem className="w-1/2">
+                                <FormItem>
                                     <FormLabel>Ссылка на альбом</FormLabel>
                                     <FormControl>
                                         <Input
@@ -169,10 +188,12 @@ export default function Home() {
                                 </FormItem>
                             )}
                         />
-                        <Button type="submit">Поиск</Button>
+                        <Button type="submit" className="h-12">
+                            Поиск
+                        </Button>
                     </form>
                 </Form>
-                <div className="space-y-4">
+                <div className="space-y-4 w-full max-w-4xl">
                     {exportButtons()}
                     <ReactSortable list={songs} setList={setSongs}>
                         {songs.map((s) => (
