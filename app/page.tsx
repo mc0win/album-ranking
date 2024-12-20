@@ -8,7 +8,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,13 +25,10 @@ import { ReactSortable } from "react-sortablejs";
 import { getAlbumInfo } from "./api/actions";
 import { useTheme } from "next-themes";
 import { Toggle } from "@/components/ui/toggle";
-import { Moon, Sun } from "lucide-react";
+import { SunMoon } from "lucide-react";
 
 export default function Home() {
     const { theme, setTheme } = useTheme();
-    useEffect(() => {
-        setTheme("light");
-    }, []);
 
     function themeSwitch() {
         if (theme === "light") {
@@ -79,10 +76,18 @@ export default function Home() {
             return (
                 <div className="flex flex-col space-y-2">
                     <div className="flex justify-evenly space-x-4">
-                        <Button onClick={copySongs} className="w-1/2 h-14">
+                        <Button
+                            variant="outline"
+                            onClick={copySongs}
+                            className="w-1/2 h-14"
+                        >
                             Скопировать
                         </Button>
-                        <Button onClick={exportSongs} className="w-1/2 h-14">
+                        <Button
+                            variant="outline"
+                            onClick={exportSongs}
+                            className="w-1/2 h-14"
+                        >
                             Сохранить в файл
                         </Button>
                     </div>
@@ -136,7 +141,7 @@ export default function Home() {
                     onClick={themeSwitch}
                     className="w-full max-w-4xl h-12"
                 >
-                    {theme === "light" ? <Sun /> : <Moon />}
+                    <SunMoon />
                 </Toggle>
                 <Form {...searchForm}>
                     <form
@@ -194,7 +199,11 @@ export default function Home() {
                                 </FormItem>
                             )}
                         />
-                        <Button type="submit" className="h-14">
+                        <Button
+                            variant="outline"
+                            type="submit"
+                            className="h-14"
+                        >
                             Поиск
                         </Button>
                     </form>
@@ -205,7 +214,7 @@ export default function Home() {
                         {songs.map((s) => (
                             <div
                                 key={s.id}
-                                className="border-solid border-gray-300 border-4 border-b-0 last:border-b-4 h-12 cursor-grab"
+                                className="border-solid border-accent border-4 border-b-0 last:border-b-4 h-12 cursor-grab"
                             >
                                 {s.name}
                             </div>
