@@ -77,13 +77,19 @@ export default function Home() {
     const exportButtons = () => {
         if (songs.length !== 0) {
             return (
-                <div className="flex space-x-2">
-                    <Button onClick={copySongs}>Скопировать</Button>
-                    <Button onClick={exportSongs}>Сохранить в файл</Button>
-                    <p className="content-center">
+                <div className="flex flex-col space-y-2">
+                    <div className="flex justify-evenly space-x-4">
+                        <Button onClick={copySongs} className="w-1/2 h-14">
+                            Скопировать
+                        </Button>
+                        <Button onClick={exportSongs} className="w-1/2 h-14">
+                            Сохранить в файл
+                        </Button>
+                    </div>
+                    <h1 className="text-center text-2xl">
                         Для ранкинга необходимо перетаскивать треки на нужное
                         место.
-                    </p>
+                    </h1>
                 </div>
             );
         }
@@ -188,12 +194,12 @@ export default function Home() {
                                 </FormItem>
                             )}
                         />
-                        <Button type="submit" className="h-12">
+                        <Button type="submit" className="h-14">
                             Поиск
                         </Button>
                     </form>
                 </Form>
-                <div className="space-y-4 w-full max-w-4xl">
+                <div className="space-y-4 w-full max-w-4xl pt-8">
                     {exportButtons()}
                     <ReactSortable list={songs} setList={setSongs}>
                         {songs.map((s) => (
