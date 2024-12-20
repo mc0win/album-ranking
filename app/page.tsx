@@ -1,101 +1,192 @@
-import Image from "next/image";
+"use client";
+
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { useEffect, useState } from "react";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form";
+import { Button } from "@/components/ui/button";
+import { ReactSortable } from "react-sortablejs";
+import { getAlbumInfo } from "./api/actions";
+import { useTheme } from "next-themes";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    const { setTheme } = useTheme();
+    useEffect(() => {
+        setTheme("system");
+    }, []);
+    const [songs, setSongs] = useState<Song[]>([]);
+    const [searchResult, setSearchResult] = useState<AlbumQuery | null>(null);
+    const notFoundLabel = () => {
+        if (searchResult != null && searchResult.result == null) {
+            return (
+                <div>
+                    <p>Альбом не найден.</p>
+                </div>
+            );
+        }
+    };
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+    function generateSongsInfo() {
+        const songsMessage = songs.map((s, i) => `${i + 1}. ${s.name}`);
+        return `${searchResult?.result?.albumName}\n\n${songsMessage?.join("\n")}`;
+    }
+
+    async function copySongs() {
+        await navigator.clipboard.writeText(generateSongsInfo());
+    }
+
+    function exportSongs() {
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(
+            new Blob([generateSongsInfo()], { type: "text/plain" })
+        );
+        if (searchResult == null || searchResult.result == null) {
+            throw new Error("Unreachable, for typescript");
+        }
+        link.download = searchResult?.result?.albumName;
+        link.click();
+    }
+
+    const exportButtons = () => {
+        if (songs.length !== 0) {
+            return (
+                <div className="flex space-x-2">
+                    <Button onClick={copySongs}>Скопировать</Button>
+                    <Button onClick={exportSongs}>Сохранить в файл</Button>
+                    <p className="content-center">
+                        Для ранкинга необходимо перетаскивать треки на нужное
+                        место.
+                    </p>
+                </div>
+            );
+        }
+    };
+
+    const linkPlaceholder = () => {
+        switch (searchForm.watch("source")) {
+            case "discogs-master":
+                return "https://www.discogs.com/master/1053720-Toby-Fox-Undertale-Soundtrack";
+            case "discogs-release":
+                return "https://www.discogs.com/release/21024259-My-Bloody-Valentine-Loveless";
+            case "spotify":
+                return "https://open.spotify.com/album/5IyHtkKQvafw7bQYFnx4FO";
+        }
+    };
+    const searchSchema = z.object({
+        source: z.enum(["discogs-master", "discogs-release", "spotify"]),
+        link: z.string().url(),
+    });
+
+    const searchForm = useForm<z.infer<typeof searchSchema>>({
+        resolver: zodResolver(searchSchema),
+        defaultValues: {
+            source: "discogs-master",
+            link: "",
+        },
+    });
+
+    async function search(values: z.infer<typeof searchSchema>) {
+        setSongs([]);
+        const result = await getAlbumInfo(values.source, values.link);
+        setSearchResult(result);
+        if (result != null && result.result != null) {
+            setSongs(result.result.songs);
+        }
+    }
+
+    return (
+        <>
+            <div className="p-2 w-1/2 space-y-8">
+                <Form {...searchForm}>
+                    <form
+                        onSubmit={searchForm.handleSubmit(search)}
+                        className="space-y-4"
+                    >
+                        <FormField
+                            control={searchForm.control}
+                            name="source"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Откуда брать</FormLabel>
+                                    <FormControl>
+                                        <Select
+                                            value={String(field.value)}
+                                            onValueChange={(value) => {
+                                                searchForm.setValue("link", "");
+                                                setSongs([]);
+                                                setSearchResult(null);
+                                                field.onChange(value);
+                                            }}
+                                        >
+                                            <SelectTrigger className="w-1/2">
+                                                <SelectValue placeholder="Select a source" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="discogs-master">
+                                                    Discogs (master)
+                                                </SelectItem>
+                                                <SelectItem value="discogs-release">
+                                                    Discogs (release)
+                                                </SelectItem>
+                                                <SelectItem value="spotify">
+                                                    Spotify
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={searchForm.control}
+                            name="link"
+                            render={({ field }) => (
+                                <FormItem className="w-1/2">
+                                    <FormLabel>Ссылка на альбом</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            placeholder={linkPlaceholder()}
+                                            {...field}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <Button type="submit">Поиск</Button>
+                    </form>
+                </Form>
+                <div className="space-y-4">
+                    {exportButtons()}
+                    <ReactSortable list={songs} setList={setSongs}>
+                        {songs.map((s) => (
+                            <div
+                                key={s.id}
+                                className="border-solid border-gray-300 border-4 border-b-0 last:border-b-4 h-12 cursor-grab"
+                            >
+                                {s.name}
+                            </div>
+                        ))}
+                    </ReactSortable>
+                    {notFoundLabel()}
+                </div>
+            </div>
+        </>
+    );
 }
