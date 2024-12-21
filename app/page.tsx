@@ -210,16 +210,31 @@ export default function Home() {
                 </Form>
                 <div className="space-y-4 w-full max-w-4xl pt-8">
                     {exportButtons()}
-                    <ReactSortable list={songs} setList={setSongs}>
-                        {songs.map((s) => (
-                            <div
-                                key={s.id}
-                                className="border-solid border-accent border-4 border-b-0 last:border-b-4 h-12 cursor-grab"
+                    {songs.length > 0 ? (
+                        <div>
+                            <ReactSortable
+                                list={songs}
+                                setList={setSongs}
+                                className="border border-accent-foreground rounded-lg"
                             >
-                                {s.name}
-                            </div>
-                        ))}
-                    </ReactSortable>
+                                {songs.map((s, i) => (
+                                    <div
+                                        key={s.id}
+                                        className="cursor-grab [&:not(:last-child)]:border-b border-accent-foreground h-12 flex"
+                                    >
+                                        <div className="border-r border-accent-foreground w-12 h-12 flex items-center justify-center text-xl">
+                                            {i + 1}
+                                        </div>
+                                        <div className="flex items-center pl-4">
+                                            {s.name}
+                                        </div>
+                                    </div>
+                                ))}
+                            </ReactSortable>
+                        </div>
+                    ) : (
+                        <></>
+                    )}
                     {notFoundLabel()}
                 </div>
             </div>
