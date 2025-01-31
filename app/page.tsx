@@ -12,7 +12,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { initRankings, sendRankings, updateRankings } from "./api/database";
+import { rankingExists, upsertRankings } from "./api/database";
 import {
     Form,
     FormControl,
@@ -48,7 +48,6 @@ export default function Home() {
     }
 
     const [songs, setSongs] = useState<Song[]>([]);
-    const [nickname, setNickname] = useState("");
     const [openDialog, setOpenDialog] = useState(false);
     const [searchResult, setSearchResult] = useState<AlbumQuery | null>(null);
     const notFoundLabel = () => {
@@ -182,29 +181,27 @@ export default function Home() {
     });
 
     async function update() {
-        await updateRankings(
-            nickname,
+        await upsertRankings(
+            sendForm.getValues().nickname,
             searchResult?.result?.albumName,
             songs.map((s, i) => `${i + 1}. ${s.name}`).toString()
         );
     }
 
     async function send(values: z.infer<typeof sendSchema>) {
-        setNickname(values.nickname);
-        if (nickname != "") {
-            const update = await sendRankings(
-                nickname,
+        if (
+            !(await rankingExists(
+                values.nickname,
                 searchResult?.result?.albumName
+            ))
+        ) {
+            await upsertRankings(
+                values.nickname,
+                searchResult?.result?.albumName,
+                songs.map((s, i) => `${i + 1}. ${s.name}`).toString()
             );
-            if (update) {
-                setOpenDialog(true);
-            } else {
-                await initRankings(
-                    nickname,
-                    searchResult?.result?.albumName,
-                    songs.map((s, i) => `${i + 1}. ${s.name}`).toString()
-                );
-            }
+        } else {
+            setOpenDialog(true);
         }
     }
 

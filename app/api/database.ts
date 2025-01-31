@@ -1,6 +1,6 @@
 "use server";
 
-import { MongoClient, ServerApiVersion } from "mongodb";
+import { Condition, MongoClient, ObjectId, ServerApiVersion } from "mongodb";
 import { URI } from "@/app/secret";
 
 const client = new MongoClient(URI, {
@@ -14,7 +14,7 @@ const client = new MongoClient(URI, {
 const database = client.db("server");
 const collection = database.collection("rankings");
 
-export async function sendRankings(
+export async function rankingExists(
     nickname: string,
     albumName: string | undefined
 ) {
@@ -25,23 +25,14 @@ export async function sendRankings(
     return oldDoc !== null;
 }
 
-export async function updateRankings(
+export async function upsertRankings(
     nickname: string,
     albumName: string | undefined,
     rankings: string
 ) {
-    const filter = { nickname: nickname, albumName: albumName };
-    await collection.updateOne(filter, { $set: { rankings: rankings } });
-}
-
-export async function initRankings(
-    nickname: string,
-    albumName: string | undefined,
-    rankings: string
-) {
-    await collection.insertOne({
-        nickname: nickname,
-        albumName: albumName,
-        rankings: rankings,
-    });
+    await collection.updateOne(
+        { nickname: nickname, albumName: albumName },
+        { $set: { rankings: rankings } },
+        { upsert: true }
+    );
 }
