@@ -28,7 +28,7 @@ export async function rankingExists(
 export async function upsertRankings(
     nickname: string,
     albumName: string | undefined,
-    rankings: string
+    rankings: string[]
 ) {
     await collection.updateOne(
         { nickname: nickname, albumName: albumName },

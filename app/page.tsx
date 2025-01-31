@@ -184,7 +184,7 @@ export default function Home() {
         await upsertRankings(
             sendForm.getValues().nickname,
             searchResult?.result?.albumName,
-            songs.map((s, i) => `${i + 1}. ${s.name}`).toString()
+            songs.map((s, i) => `${s.name}`)
         );
     }
 
@@ -198,7 +198,7 @@ export default function Home() {
             await upsertRankings(
                 values.nickname,
                 searchResult?.result?.albumName,
-                songs.map((s, i) => `${i + 1}. ${s.name}`).toString()
+                songs.map((s, i) => `${s.name}`)
             );
         } else {
             setOpenDialog(true);
