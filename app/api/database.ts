@@ -1,6 +1,6 @@
 "use server";
 
-import { Condition, MongoClient, ObjectId, ServerApiVersion } from "mongodb";
+import { MongoClient, ServerApiVersion } from "mongodb";
 import { URI } from "@/app/secret";
 
 const client = new MongoClient(URI, {
@@ -36,3 +36,5 @@ export async function upsertRankings(
         { upsert: true }
     );
 }
+
+export async function findRankings() {}

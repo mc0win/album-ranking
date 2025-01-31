@@ -1,7 +1,6 @@
 "use server";
 
 import { SpotifyApi } from "@spotify/web-api-ts-sdk";
-import { MongoClient, ServerApiVersion } from "mongodb";
 
 const discogs = require("disconnect").Client;
 const spotify = SpotifyApi.withClientCredentials(

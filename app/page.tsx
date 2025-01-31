@@ -8,7 +8,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import React, { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,6 +26,7 @@ import { ReactSortable } from "react-sortablejs";
 import { getAlbumInfo } from "./api/actions";
 import { useTheme } from "next-themes";
 import { Toggle } from "@/components/ui/toggle";
+import { useToast } from "@/hooks/use-toast";
 import { SunMoon } from "lucide-react";
 import {
     Dialog,
@@ -35,10 +36,11 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Home() {
     const { theme, setTheme } = useTheme();
-
+    const { toast } = useToast();
     function themeSwitch() {
         if (theme === "light") {
             setTheme("dark");
@@ -67,6 +69,9 @@ export default function Home() {
 
     async function copySongs() {
         await navigator.clipboard.writeText(generateSongsInfo());
+        toast({
+            title: "Скопировано в буфер обмена!",
+        });
     }
 
     function exportSongs() {
@@ -184,8 +189,11 @@ export default function Home() {
         await upsertRankings(
             sendForm.getValues().nickname,
             searchResult?.result?.albumName,
-            songs.map((s, i) => `${s.name}`)
+            songs.map((s) => `${s.name}`)
         );
+        toast({
+            title: "Ранкинг успешно обновлён!",
+        });
     }
 
     async function send(values: z.infer<typeof sendSchema>) {
@@ -198,8 +206,11 @@ export default function Home() {
             await upsertRankings(
                 values.nickname,
                 searchResult?.result?.albumName,
-                songs.map((s, i) => `${s.name}`)
+                songs.map((s) => `${s.name}`)
             );
+            toast({
+                title: "Ранкинг успешно отправлен на сервер!",
+            });
         } else {
             setOpenDialog(true);
         }
@@ -226,109 +237,143 @@ export default function Home() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-            <div className="flex flex-col items-center p-2 space-y-4">
-                <Toggle
-                    variant="outline"
-                    aria-label="Toggle theme"
-                    onClick={themeSwitch}
-                    className="w-full max-w-4xl h-12"
+            <div className="flex justify-evenly space-x-4">
+                <Tabs
+                    defaultValue="ranking"
+                    className="space-y-4 w-full max-w-4xl p-4"
                 >
-                    <SunMoon />
-                </Toggle>
-                <Form {...searchForm}>
-                    <form
-                        onSubmit={searchForm.handleSubmit(search)}
-                        className="flex flex-col w-full max-w-4xl space-y-4"
-                    >
-                        <FormField
-                            control={searchForm.control}
-                            name="source"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Откуда брать</FormLabel>
-                                    <FormControl>
-                                        <Select
-                                            value={String(field.value)}
-                                            onValueChange={(value) => {
-                                                searchForm.setValue("link", "");
-                                                setSongs([]);
-                                                setSearchResult(null);
-                                                field.onChange(value);
-                                            }}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select a source" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="discogs-master">
-                                                    Discogs (master)
-                                                </SelectItem>
-                                                <SelectItem value="discogs-release">
-                                                    Discogs (release)
-                                                </SelectItem>
-                                                <SelectItem value="spotify">
-                                                    Spotify
-                                                </SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </FormControl>
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={searchForm.control}
-                            name="link"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Ссылка на альбом</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            placeholder={linkPlaceholder()}
-                                            {...field}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <Button
-                            variant="outline"
-                            type="submit"
-                            className="h-14"
-                        >
-                            Поиск
-                        </Button>
-                    </form>
-                </Form>
-                <div className="space-y-4 w-full max-w-4xl pt-8">
-                    {exportButtons()}
-                    {songs.length > 0 ? (
-                        <div>
-                            <ReactSortable
-                                list={songs}
-                                setList={setSongs}
-                                className="border border-accent-foreground rounded-lg"
+                    <TabsList className="relative w-full">
+                        <TabsTrigger value="ranking" className="w-1/2">
+                            Оценка альбома
+                        </TabsTrigger>
+                        <TabsTrigger value="results" className="w-1/2">
+                            Ранкинги
+                        </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="ranking">
+                        <div className="flex flex-col items-center p-2 space-y-4">
+                            <Toggle
+                                variant="outline"
+                                aria-label="Toggle theme"
+                                onClick={themeSwitch}
+                                className="w-full max-w-4xl h-12"
                             >
-                                {songs.map((s, i) => (
-                                    <div
-                                        key={s.id}
-                                        className="cursor-grab [&:not(:last-child)]:border-b border-accent-foreground h-12 flex"
+                                <SunMoon />
+                            </Toggle>
+                            <Form {...searchForm}>
+                                <form
+                                    onSubmit={searchForm.handleSubmit(search)}
+                                    className="flex flex-col w-full max-w-4xl space-y-4"
+                                >
+                                    <FormField
+                                        control={searchForm.control}
+                                        name="source"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    Откуда брать
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Select
+                                                        value={String(
+                                                            field.value
+                                                        )}
+                                                        onValueChange={(
+                                                            value
+                                                        ) => {
+                                                            searchForm.setValue(
+                                                                "link",
+                                                                ""
+                                                            );
+                                                            setSongs([]);
+                                                            setSearchResult(
+                                                                null
+                                                            );
+                                                            field.onChange(
+                                                                value
+                                                            );
+                                                        }}
+                                                    >
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select a source" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="discogs-master">
+                                                                Discogs (master)
+                                                            </SelectItem>
+                                                            <SelectItem value="discogs-release">
+                                                                Discogs
+                                                                (release)
+                                                            </SelectItem>
+                                                            <SelectItem value="spotify">
+                                                                Spotify
+                                                            </SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={searchForm.control}
+                                        name="link"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    Ссылка на альбом
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        placeholder={linkPlaceholder()}
+                                                        {...field}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <Button
+                                        variant="outline"
+                                        type="submit"
+                                        className="h-14"
                                     >
-                                        <div className="border-r border-accent-foreground w-12 h-12 flex items-center justify-center text-xl">
-                                            {i + 1}
-                                        </div>
-                                        <div className="flex items-center pl-4">
-                                            {s.name}
-                                        </div>
+                                        Поиск
+                                    </Button>
+                                </form>
+                            </Form>
+                            <div className="space-y-4 w-full max-w-4xl pt-8">
+                                {exportButtons()}
+                                {songs.length > 0 ? (
+                                    <div>
+                                        <ReactSortable
+                                            list={songs}
+                                            setList={setSongs}
+                                            className="border border-accent-foreground rounded-lg"
+                                        >
+                                            {songs.map((s, i) => (
+                                                <div
+                                                    key={s.id}
+                                                    className="cursor-grab [&:not(:last-child)]:border-b border-accent-foreground h-12 flex"
+                                                >
+                                                    <div className="border-r border-accent-foreground w-12 h-12 flex items-center justify-center text-xl">
+                                                        {i + 1}
+                                                    </div>
+                                                    <div className="flex items-center pl-4">
+                                                        {s.name}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </ReactSortable>
                                     </div>
-                                ))}
-                            </ReactSortable>
+                                ) : (
+                                    <></>
+                                )}
+                                {notFoundLabel()}
+                            </div>
                         </div>
-                    ) : (
-                        <></>
-                    )}
-                    {notFoundLabel()}
-                </div>
+                    </TabsContent>
+                    <TabsContent value="results"></TabsContent>
+                </Tabs>
             </div>
         </>
     );
