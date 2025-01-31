@@ -1,13 +1,13 @@
 interface Song {
-  id: number;
-  name: string;
+    id: number;
+    name: string;
 }
 
 interface AlbumQuery {
-  result: SearchResult | null;
+    result: SearchResult | null;
 }
 
 interface SearchResult {
-  albumName: string;
-  songs: Song[];
+    albumName: string;
+    songs: Song[];
 }

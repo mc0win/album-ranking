@@ -12,6 +12,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { initRankings, sendRankings, updateRankings } from "./api/database";
 import {
     Form,
     FormControl,
@@ -26,6 +27,14 @@ import { getAlbumInfo } from "./api/actions";
 import { useTheme } from "next-themes";
 import { Toggle } from "@/components/ui/toggle";
 import { SunMoon } from "lucide-react";
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function Home() {
     const { theme, setTheme } = useTheme();
@@ -39,6 +48,8 @@ export default function Home() {
     }
 
     const [songs, setSongs] = useState<Song[]>([]);
+    const [nickname, setNickname] = useState("");
+    const [openDialog, setOpenDialog] = useState(false);
     const [searchResult, setSearchResult] = useState<AlbumQuery | null>(null);
     const notFoundLabel = () => {
         if (searchResult != null && searchResult.result == null) {
@@ -75,6 +86,33 @@ export default function Home() {
         if (songs.length !== 0) {
             return (
                 <div className="flex flex-col space-y-2">
+                    <Form {...sendForm}>
+                        <form
+                            onSubmit={sendForm.handleSubmit(send)}
+                            className="flex flex-col w-full max-w-4xl space-y-4"
+                        >
+                            <FormField
+                                control={sendForm.control}
+                                name="nickname"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Твой никнейм</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <Button
+                                variant="outline"
+                                type="submit"
+                                className="h-14"
+                            >
+                                Отправить на сервер
+                            </Button>
+                        </form>
+                    </Form>
                     <div className="flex justify-evenly space-x-4">
                         <Button
                             variant="outline"
@@ -132,8 +170,65 @@ export default function Home() {
         }
     }
 
+    const sendSchema = z.object({
+        nickname: z.string(),
+    });
+
+    const sendForm = useForm<z.infer<typeof sendSchema>>({
+        resolver: zodResolver(sendSchema),
+        defaultValues: {
+            nickname: "",
+        },
+    });
+
+    async function update() {
+        await updateRankings(
+            nickname,
+            searchResult?.result?.albumName,
+            songs.map((s, i) => `${i + 1}. ${s.name}`).toString()
+        );
+    }
+
+    async function send(values: z.infer<typeof sendSchema>) {
+        setNickname(values.nickname);
+        if (nickname != "") {
+            const update = await sendRankings(
+                nickname,
+                searchResult?.result?.albumName
+            );
+            if (update) {
+                setOpenDialog(true);
+            } else {
+                await initRankings(
+                    nickname,
+                    searchResult?.result?.albumName,
+                    songs.map((s, i) => `${i + 1}. ${s.name}`).toString()
+                );
+            }
+        }
+    }
+
     return (
         <>
+            <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Хотите обновить ранкинг?</DialogTitle>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button type="button" onClick={update}>
+                                Да
+                            </Button>
+                        </DialogClose>
+                        <DialogClose asChild>
+                            <Button type="button" variant="secondary">
+                                Нет
+                            </Button>
+                        </DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
             <div className="flex flex-col items-center p-2 space-y-4">
                 <Toggle
                     variant="outline"
