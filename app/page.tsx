@@ -66,6 +66,7 @@ export default function Home() {
     const [allRankings, setAllRankings] = useState(
         new Map<string, Map<string, number>>()
     );
+
     const notFoundLabel = () => {
         if (searchResult != null && searchResult.result == null) {
             return (
@@ -156,9 +157,11 @@ export default function Home() {
         }
     };
 
-    async function getRankings() {
-        setAllRankings(await findRankings());
-        setAlbumsReady(true);
+    async function get(values: z.infer<typeof sendSchema>) {
+        if (values.nickname !== "") {
+            setAllRankings(await findRankings(values.nickname));
+            setAlbumsReady(true);
+        }
     }
 
     const albumRankings = () => {
@@ -220,7 +223,7 @@ export default function Home() {
     };
     const searchSchema = z.object({
         source: z.enum(["discogs-master", "discogs-release", "spotify"]),
-        link: z.string().url(),
+        link: z.string().url("Неверная ссылка."),
     });
 
     const searchForm = useForm<z.infer<typeof searchSchema>>({
@@ -241,11 +244,22 @@ export default function Home() {
     }
 
     const sendSchema = z.object({
-        nickname: z.string(),
+        nickname: z.string().nonempty("Пожалуйста, введите никнейм."),
     });
 
     const sendForm = useForm<z.infer<typeof sendSchema>>({
         resolver: zodResolver(sendSchema),
+        defaultValues: {
+            nickname: "",
+        },
+    });
+
+    const getSchema = z.object({
+        nickname: z.string().nonempty("Пожалуйста, введите никнейм."),
+    });
+
+    const getForm = useForm<z.infer<typeof sendSchema>>({
+        resolver: zodResolver(getSchema),
         defaultValues: {
             nickname: "",
         },
@@ -316,11 +330,14 @@ export default function Home() {
                     onValueChange={reset}
                 >
                     <TabsList className="relative w-full">
-                        <TabsTrigger value="ranking" className="w-1/2">
+                        <TabsTrigger value="ranking" className="w-1/3">
                             Оценка альбома
                         </TabsTrigger>
-                        <TabsTrigger value="results" className="w-1/2">
+                        <TabsTrigger value="results" className="w-1/3">
                             Ранкинги
+                        </TabsTrigger>
+                        <TabsTrigger value="videos" className="w-1/3">
+                            Видео
                         </TabsTrigger>
                     </TabsList>
                     <TabsContent value="ranking">
@@ -446,16 +463,38 @@ export default function Home() {
                         </div>
                     </TabsContent>
                     <TabsContent value="results">
-                        <Button
-                            type="button"
-                            onClick={getRankings}
-                            className="w-full max-w-4xl h-12"
-                            variant="outline"
-                        >
-                            Посмотреть ранкинги
-                        </Button>
+                        <Form {...getForm}>
+                            <form
+                                onSubmit={getForm.handleSubmit(get)}
+                                className="flex flex-col w-full max-w-4xl space-y-4"
+                            >
+                                <FormField
+                                    control={getForm.control}
+                                    name="nickname"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>
+                                                Никнейм оценивающего
+                                            </FormLabel>
+                                            <FormControl>
+                                                <Input {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <Button
+                                    type="submit"
+                                    className="w-full max-w-4xl h-12"
+                                    variant="outline"
+                                >
+                                    Посмотреть ранкинги
+                                </Button>
+                            </form>
+                        </Form>
                         {albumRankings()}
                     </TabsContent>
+                    <TabsContent value="videos"></TabsContent>
                 </Tabs>
             </div>
         </>
