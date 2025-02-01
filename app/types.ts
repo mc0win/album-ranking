@@ -9,5 +9,6 @@ interface AlbumQuery {
 
 interface SearchResult {
     albumName: string;
+    artistName: string;
     songs: Song[];
 }

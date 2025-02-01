@@ -28,13 +28,41 @@ export async function rankingExists(
 export async function upsertRankings(
     nickname: string,
     albumName: string | undefined,
+    defaultRankings: string[],
     rankings: string[]
 ) {
     await collection.updateOne(
-        { nickname: nickname, albumName: albumName },
+        {
+            nickname: nickname,
+            albumName: albumName,
+            defaultRankings: defaultRankings,
+        },
         { $set: { rankings: rankings } },
         { upsert: true }
     );
 }
 
-export async function findRankings() {}
+export async function findRankings() {
+    const cursor = collection.find(
+        {},
+        {
+            projection: {
+                albumName: true,
+                rankings: true,
+                nickname: true,
+                defaultRankings: true,
+            },
+        }
+    );
+
+    let finalRankings: string[] = [];
+
+    for await (const doc of cursor) {
+        let tempAlbum = [];
+        for (const song of doc.rankings) {
+            tempAlbum.push(song);
+        }
+        finalRankings.push(tempAlbum.toString());
+    }
+    return finalRankings;
+}

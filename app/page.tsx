@@ -12,7 +12,7 @@ import React, { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { rankingExists, upsertRankings } from "./api/database";
+import { findRankings, rankingExists, upsertRankings } from "./api/database";
 import {
     Form,
     FormControl,
@@ -37,6 +37,21 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+    Carousel,
+    CarouselContent,
+    CarouselItem,
+    CarouselNext,
+    CarouselPrevious,
+} from "@/components/ui/carousel";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function Home() {
     const { theme, setTheme } = useTheme();
@@ -50,8 +65,11 @@ export default function Home() {
     }
 
     const [songs, setSongs] = useState<Song[]>([]);
+    const [defaultSongs, setDefaultSongs] = useState<string[]>([]);
     const [openDialog, setOpenDialog] = useState(false);
+    const [albumsReady, setAlbumsReady] = useState(false);
     const [searchResult, setSearchResult] = useState<AlbumQuery | null>(null);
+    const [allRankings, setAllRankings] = useState<string[]>([]);
     const notFoundLabel = () => {
         if (searchResult != null && searchResult.result == null) {
             return (
@@ -142,6 +160,55 @@ export default function Home() {
         }
     };
 
+    async function getRankings() {
+        setAllRankings(await findRankings());
+        setAlbumsReady(true);
+    }
+    const albumRankings = () => {
+        if (albumsReady) {
+            return (
+                <Carousel
+                    opts={{
+                        align: "start",
+                    }}
+                    className="w-full pt-4"
+                >
+                    <CarouselContent>
+                        {allRankings.map((album, i) => (
+                            <CarouselItem key={i} className="">
+                                <div className="p-1">
+                                    <Card>
+                                        <CardContent className="space-y-4 w-full max-w-4xl pt-8">
+                                            <ScrollArea className="h-[400px]">
+                                                <div className="flex flex-col items-left pl-4">
+                                                    {album
+                                                        .split(",")
+                                                        .map((song, i) => (
+                                                            <span
+                                                                key={i}
+                                                                className="font-semibold"
+                                                            >
+                                                                {i +
+                                                                    1 +
+                                                                    ". " +
+                                                                    song}
+                                                            </span>
+                                                        ))}
+                                                </div>
+                                            </ScrollArea>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            </CarouselItem>
+                        ))}
+                    </CarouselContent>
+                    <CarouselPrevious />
+                    <CarouselNext />
+                </Carousel>
+            );
+        }
+    };
+
     const linkPlaceholder = () => {
         switch (searchForm.watch("source")) {
             case "discogs-master":
@@ -171,6 +238,7 @@ export default function Home() {
         setSearchResult(result);
         if (result != null && result.result != null) {
             setSongs(result.result.songs);
+            setDefaultSongs(result.result.songs.map((s) => `${s.name}`));
         }
     }
 
@@ -189,6 +257,7 @@ export default function Home() {
         await upsertRankings(
             sendForm.getValues().nickname,
             searchResult?.result?.albumName,
+            defaultSongs,
             songs.map((s) => `${s.name}`)
         );
         toast({
@@ -197,22 +266,25 @@ export default function Home() {
     }
 
     async function send(values: z.infer<typeof sendSchema>) {
-        if (
-            !(await rankingExists(
-                values.nickname,
-                searchResult?.result?.albumName
-            ))
-        ) {
-            await upsertRankings(
-                values.nickname,
-                searchResult?.result?.albumName,
-                songs.map((s) => `${s.name}`)
-            );
-            toast({
-                title: "Ранкинг успешно отправлен на сервер!",
-            });
-        } else {
-            setOpenDialog(true);
+        if (values.nickname !== "") {
+            if (
+                !(await rankingExists(
+                    values.nickname,
+                    searchResult?.result?.albumName
+                ))
+            ) {
+                await upsertRankings(
+                    values.nickname,
+                    searchResult?.result?.albumName,
+                    defaultSongs,
+                    songs.map((s) => `${s.name}`)
+                );
+                toast({
+                    title: "Ранкинг успешно отправлен на сервер!",
+                });
+            } else {
+                setOpenDialog(true);
+            }
         }
     }
 
@@ -372,7 +444,17 @@ export default function Home() {
                             </div>
                         </div>
                     </TabsContent>
-                    <TabsContent value="results"></TabsContent>
+                    <TabsContent value="results">
+                        <Button
+                            type="button"
+                            onClick={getRankings}
+                            className="w-full max-w-4xl h-12"
+                            variant="outline"
+                        >
+                            Посмотреть ранкинги
+                        </Button>
+                        {albumRankings()}
+                    </TabsContent>
                 </Tabs>
             </div>
         </>

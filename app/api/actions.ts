@@ -51,6 +51,7 @@ async function processDiscogs(
             });
         return {
             albumName: master.title,
+            artistName: master.artists,
             songs: tracks,
         };
     }
@@ -71,6 +72,7 @@ async function processDiscogs(
         });
     return {
         albumName: release.title,
+        artistName: release.artists,
         songs: tracks,
     };
 }
@@ -90,6 +92,7 @@ async function processSpotify(link: string): Promise<SearchResult | null> {
     });
     return {
         albumName: album.name,
+        artistName: album.artists.toString(),
         songs: tracks,
     };
 }
