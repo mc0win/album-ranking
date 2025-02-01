@@ -46,6 +46,15 @@ import {
 } from "@/components/ui/carousel";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuLabel,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function Home() {
     const { theme, setTheme } = useTheme();
@@ -59,10 +68,41 @@ export default function Home() {
         }
     }
 
+    const nicknames = [
+        { label: "astigm4tism", value: "astigm4tism" },
+        { label: "Autiat", value: "Autiat" },
+        { label: "Aze122333", value: "Aze122333" },
+        { label: "borddelasolitude_exe", value: "borddelasolitude_exe" },
+        { label: "HeNCaF_hm", value: "HeNCaF_hm" },
+        { label: "Hindeko", value: "Hindeko" },
+        { label: "horriblemuck", value: "horriblemuck" },
+        { label: "Ilushatopch", value: "Ilushatopch" },
+        { label: "joosenitsa", value: "joosenitsa" },
+        { label: "mcowin", value: "mcowin" },
+        { label: "mihaps", value: "mihaps" },
+        { label: "morph", value: "morph" },
+        { label: "MotokEkb", value: "MotokEkb" },
+        { label: "noblefoul", value: "noblefoul" },
+        { label: "oddjar", value: "oddjar" },
+        { label: "oquafr", value: "oquafr" },
+        { label: "retsaya", value: "retsaya" },
+        { label: "sailinthesea", value: "sailinthesea" },
+        { label: "ShioriWatanabe", value: "ShioriWatanabe" },
+        { label: "smileb0y52", value: "smileb0y52" },
+        { label: "snowyowo", value: "snowyowo" },
+        { label: "takma123", value: "takma123" },
+        { label: "tehtactiq", value: "tehtactiq" },
+        { label: "truelyalyaa", value: "truelyalyaa" },
+        { label: "UncleNessid", value: "UncleNessid" },
+        { label: "water667", value: "water667" },
+    ] as const;
+
     const [songs, setSongs] = useState<Song[]>([]);
     const [openDialog, setOpenDialog] = useState(false);
     const [albumsReady, setAlbumsReady] = useState(false);
     const [searchResult, setSearchResult] = useState<AlbumQuery | null>(null);
+    const [chosenNickname, setChosenNickname] = useState("");
+    const [chosenNicknameCopy, setChosenNicknameCopy] = useState("");
     const [allRankings, setAllRankings] = useState(
         new Map<string, Map<string, number>>()
     );
@@ -105,33 +145,40 @@ export default function Home() {
         if (songs.length !== 0) {
             return (
                 <div className="flex flex-col space-y-2">
-                    <Form {...sendForm}>
-                        <form
-                            onSubmit={sendForm.handleSubmit(send)}
-                            className="flex flex-col w-full max-w-4xl space-y-4"
-                        >
-                            <FormField
-                                control={sendForm.control}
-                                name="nickname"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Твой никнейм</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <Button
-                                variant="outline"
-                                type="submit"
-                                className="h-14"
-                            >
-                                Отправить на сервер
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="h-14">
+                                Выбрать никнейм
                             </Button>
-                        </form>
-                    </Form>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-56">
+                            <DropdownMenuLabel>Никнеймы</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuRadioGroup
+                                value={chosenNickname}
+                                onValueChange={setChosenNickname}
+                            >
+                                <ScrollArea className="h-[200px]">
+                                    {nicknames.map((nickname, i) => (
+                                        <DropdownMenuRadioItem
+                                            key={i}
+                                            value={nickname.value}
+                                        >
+                                            {nickname.label}
+                                        </DropdownMenuRadioItem>
+                                    ))}
+                                </ScrollArea>
+                            </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Button
+                        variant="outline"
+                        type="button"
+                        onClick={send}
+                        className="h-14"
+                    >
+                        Отправить на сервер
+                    </Button>
                     <div className="flex justify-evenly space-x-4">
                         <Button
                             variant="outline"
@@ -157,15 +204,21 @@ export default function Home() {
         }
     };
 
-    async function get(values: z.infer<typeof sendSchema>) {
-        if (values.nickname !== "") {
-            setAllRankings(await findRankings(values.nickname));
-            setAlbumsReady(true);
+    async function get() {
+        if (chosenNicknameCopy !== "") {
+            setAllRankings(await findRankings(chosenNicknameCopy));
+            if (allRankings.size !== 0) {
+                setAlbumsReady(true);
+            } else {
+                toast({
+                    title: "У этого человека нет ранкингов.",
+                });
+            }
         }
     }
 
     const albumRankings = () => {
-        if (albumsReady) {
+        if (albumsReady && allRankings.size !== 0) {
             return (
                 <Carousel
                     opts={{
@@ -254,17 +307,6 @@ export default function Home() {
         },
     });
 
-    const getSchema = z.object({
-        nickname: z.string().nonempty("Пожалуйста, введите никнейм."),
-    });
-
-    const getForm = useForm<z.infer<typeof sendSchema>>({
-        resolver: zodResolver(getSchema),
-        defaultValues: {
-            nickname: "",
-        },
-    });
-
     async function update() {
         await upsertRankings(
             sendForm.getValues().nickname,
@@ -280,16 +322,16 @@ export default function Home() {
         setAlbumsReady(false);
     }
 
-    async function send(values: z.infer<typeof sendSchema>) {
-        if (values.nickname !== "") {
+    async function send() {
+        if (chosenNickname !== "") {
             if (
                 !(await rankingExists(
-                    values.nickname,
+                    chosenNickname,
                     searchResult?.result?.albumName
                 ))
             ) {
                 await upsertRankings(
-                    values.nickname,
+                    chosenNickname,
                     searchResult?.result?.albumName,
                     songs.map((s) => `${s.name}`)
                 );
@@ -431,7 +473,7 @@ export default function Home() {
                                     </Button>
                                 </form>
                             </Form>
-                            <div className="space-y-4 w-full max-w-4xl pt-8">
+                            <div className="space-y-4 w-full max-w-4xl">
                                 {exportButtons()}
                                 {songs.length > 0 ? (
                                     <div>
@@ -463,35 +505,47 @@ export default function Home() {
                         </div>
                     </TabsContent>
                     <TabsContent value="results">
-                        <Form {...getForm}>
-                            <form
-                                onSubmit={getForm.handleSubmit(get)}
-                                className="flex flex-col w-full max-w-4xl space-y-4"
-                            >
-                                <FormField
-                                    control={getForm.control}
-                                    name="nickname"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>
-                                                Никнейм оценивающего
-                                            </FormLabel>
-                                            <FormControl>
-                                                <Input {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <Button
-                                    type="submit"
-                                    className="w-full max-w-4xl h-12"
-                                    variant="outline"
-                                >
-                                    Посмотреть ранкинги
-                                </Button>
-                            </form>
-                        </Form>
+                        <div className="pb-4">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        className="w-full max-w-4xl h-12"
+                                    >
+                                        Выбрать никнейм
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="w-56">
+                                    <DropdownMenuLabel>
+                                        Никнеймы
+                                    </DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuRadioGroup
+                                        value={chosenNicknameCopy}
+                                        onValueChange={setChosenNicknameCopy}
+                                    >
+                                        <ScrollArea className="h-[200px]">
+                                            {nicknames.map((nickname, i) => (
+                                                <DropdownMenuRadioItem
+                                                    key={i}
+                                                    value={nickname.value}
+                                                >
+                                                    {nickname.label}
+                                                </DropdownMenuRadioItem>
+                                            ))}
+                                        </ScrollArea>
+                                    </DropdownMenuRadioGroup>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+                        <Button
+                            type="button"
+                            onClick={get}
+                            className="w-full max-w-4xl h-12"
+                            variant="outline"
+                        >
+                            Посмотреть ранкинги
+                        </Button>
                         {albumRankings()}
                     </TabsContent>
                     <TabsContent value="videos"></TabsContent>
