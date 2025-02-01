@@ -44,18 +44,13 @@ import {
     CarouselNext,
     CarouselPrevious,
 } from "@/components/ui/carousel";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function Home() {
     const { theme, setTheme } = useTheme();
     const { toast } = useToast();
+
     function themeSwitch() {
         if (theme === "light") {
             setTheme("dark");
@@ -65,11 +60,12 @@ export default function Home() {
     }
 
     const [songs, setSongs] = useState<Song[]>([]);
-    const [defaultSongs, setDefaultSongs] = useState<string[]>([]);
     const [openDialog, setOpenDialog] = useState(false);
     const [albumsReady, setAlbumsReady] = useState(false);
     const [searchResult, setSearchResult] = useState<AlbumQuery | null>(null);
-    const [allRankings, setAllRankings] = useState<string[]>([]);
+    const [allRankings, setAllRankings] = useState(
+        new Map<string, Map<string, number>>()
+    );
     const notFoundLabel = () => {
         if (searchResult != null && searchResult.result == null) {
             return (
@@ -164,6 +160,7 @@ export default function Home() {
         setAllRankings(await findRankings());
         setAlbumsReady(true);
     }
+
     const albumRankings = () => {
         if (albumsReady) {
             return (
@@ -174,26 +171,28 @@ export default function Home() {
                     className="w-full pt-4"
                 >
                     <CarouselContent>
-                        {allRankings.map((album, i) => (
+                        {Array.from(allRankings.values()).map((value, i) => (
                             <CarouselItem key={i} className="">
                                 <div className="p-1">
                                     <Card>
                                         <CardContent className="space-y-4 w-full max-w-4xl pt-8">
                                             <ScrollArea className="h-[400px]">
                                                 <div className="flex flex-col items-left pl-4">
-                                                    {album
-                                                        .split(",")
-                                                        .map((song, i) => (
-                                                            <span
-                                                                key={i}
-                                                                className="font-semibold"
-                                                            >
-                                                                {i +
-                                                                    1 +
-                                                                    ". " +
-                                                                    song}
-                                                            </span>
-                                                        ))}
+                                                    {Array.from(
+                                                        value.keys()
+                                                    ).map((song, i) => (
+                                                        <div
+                                                            key={i}
+                                                            className="h-12 flex"
+                                                        >
+                                                            <div className="border-r border-accent-foreground w-12 h-12 flex items-center justify-center text-xl">
+                                                                {i + 1}
+                                                            </div>
+                                                            <div className="flex items-center pl-4">
+                                                                {song}
+                                                            </div>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             </ScrollArea>
                                         </CardContent>
@@ -238,7 +237,6 @@ export default function Home() {
         setSearchResult(result);
         if (result != null && result.result != null) {
             setSongs(result.result.songs);
-            setDefaultSongs(result.result.songs.map((s) => `${s.name}`));
         }
     }
 
@@ -257,12 +255,15 @@ export default function Home() {
         await upsertRankings(
             sendForm.getValues().nickname,
             searchResult?.result?.albumName,
-            defaultSongs,
             songs.map((s) => `${s.name}`)
         );
         toast({
             title: "Ранкинг успешно обновлён!",
         });
+    }
+
+    async function reset() {
+        setAlbumsReady(false);
     }
 
     async function send(values: z.infer<typeof sendSchema>) {
@@ -276,7 +277,6 @@ export default function Home() {
                 await upsertRankings(
                     values.nickname,
                     searchResult?.result?.albumName,
-                    defaultSongs,
                     songs.map((s) => `${s.name}`)
                 );
                 toast({
@@ -313,6 +313,7 @@ export default function Home() {
                 <Tabs
                     defaultValue="ranking"
                     className="space-y-4 w-full max-w-4xl p-4"
+                    onValueChange={reset}
                 >
                     <TabsList className="relative w-full">
                         <TabsTrigger value="ranking" className="w-1/2">

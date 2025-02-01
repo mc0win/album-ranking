@@ -28,14 +28,12 @@ export async function rankingExists(
 export async function upsertRankings(
     nickname: string,
     albumName: string | undefined,
-    defaultRankings: string[],
     rankings: string[]
 ) {
     await collection.updateOne(
         {
             nickname: nickname,
             albumName: albumName,
-            defaultRankings: defaultRankings,
         },
         { $set: { rankings: rankings } },
         { upsert: true }
@@ -50,19 +48,35 @@ export async function findRankings() {
                 albumName: true,
                 rankings: true,
                 nickname: true,
-                defaultRankings: true,
             },
         }
     );
 
-    let finalRankings: string[] = [];
+    let finalRankings = new Map<string, Map<string, number>>();
 
     for await (const doc of cursor) {
-        let tempAlbum = [];
-        for (const song of doc.rankings) {
-            tempAlbum.push(song);
+        let albumName: string = doc.albumName;
+        if (!finalRankings.has(albumName)) {
+            let tempRankings = new Map<string, number>();
+            for await (const song of doc.rankings) {
+                tempRankings.set(song, doc.rankings.indexOf(song));
+            }
+            finalRankings.set(albumName, tempRankings);
+        } else {
+            let tempRankings = finalRankings.get(albumName);
+            if (tempRankings != undefined) {
+                for await (const song_1 of doc.rankings) {
+                    tempRankings.set(
+                        song_1,
+                        tempRankings.get(song_1) + doc.rankings.indexOf(song_1)
+                    );
+                }
+                let sortedRankings = new Map(
+                    Array.from(tempRankings).sort((a, b) => a[1] - b[1])
+                );
+                finalRankings.set(albumName, sortedRankings);
+            }
         }
-        finalRankings.push(tempAlbum.toString());
     }
     return finalRankings;
 }
