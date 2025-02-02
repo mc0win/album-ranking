@@ -45,6 +45,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { validatePassword } from "@/app/api/accounts";
 
 export default function Home() {
     const { theme, setTheme } = useTheme();
@@ -94,7 +95,6 @@ export default function Home() {
     const [allAlbums, setAllAlbums] = useState<string[]>([]);
     const [chosenAlbumName, setChosenAlbumName] = useState("");
     const [chosenNickname, setChosenNickname] = useState("");
-    const [chosenNicknameCopy, setChosenNicknameCopy] = useState("");
 
     const notFoundLabel = () => {
         if (searchResult != null && searchResult.result == null) {
@@ -105,41 +105,79 @@ export default function Home() {
     const exportButtons = () => {
         if (songs.length !== 0) {
             return (
-                <div className="flex justify-evenly place-items-center space-x-4">
-                    <Select
-                        value={chosenNickname}
-                        onValueChange={setChosenNickname}
+                <Form {...sendForm}>
+                    <form
+                        onSubmit={sendForm.handleSubmit(send)}
+                        className="flex flex-col w-full max-w-4xl space-y-4"
                     >
-                        <SelectTrigger className="h-14">
-                            <SelectValue placeholder="Выберите никнейм" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {nicknames.map((nickname, i) => (
-                                <SelectItem key={i} value={nickname.value}>
-                                    {nickname.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Button
-                        variant="outline"
-                        type="button"
-                        onClick={send}
-                        className="h-14"
-                    >
-                        Отправить на сервер
-                    </Button>
-                    <h1 className="text-center text-base">
-                        Для ранкинга необходимо перетаскивать треки на нужное
-                        место.
-                    </h1>
-                </div>
+                        <FormField
+                            control={sendForm.control}
+                            name="nickname"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Никнейм</FormLabel>
+                                    <FormControl>
+                                        <Select
+                                            value={String(field.value)}
+                                            onValueChange={(value) => {
+                                                sendForm.setValue(
+                                                    "nickname",
+                                                    "password"
+                                                );
+                                                field.onChange(value);
+                                            }}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {nicknames.map(
+                                                    (nickname, i) => (
+                                                        <SelectItem
+                                                            key={i}
+                                                            value={
+                                                                nickname.value
+                                                            }
+                                                        >
+                                                            {nickname.label}
+                                                        </SelectItem>
+                                                    )
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={sendForm.control}
+                            name="password"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Пароль</FormLabel>
+                                    <FormControl>
+                                        <Input type="password" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <Button
+                            variant="outline"
+                            type="submit"
+                            className="h-14"
+                        >
+                            Отправить на сервер
+                        </Button>
+                    </form>
+                </Form>
             );
         }
     };
 
     const albumRankings = () => {
-        if (chosenNicknameCopy !== "" && chosenAlbum.length > 0) {
+        if (chosenNickname !== "" && chosenAlbum.length > 0) {
             return (
                 <div>
                     <Card>
@@ -198,13 +236,15 @@ export default function Home() {
     }
 
     const sendSchema = z.object({
-        nickname: z.string().nonempty("Пожалуйста, введите никнейм."),
+        nickname: z.string().nonempty("Пожалуйста, выберите никнейм."),
+        password: z.string().nonempty("Пожалуйста, введите пароль."),
     });
 
     const sendForm = useForm<z.infer<typeof sendSchema>>({
         resolver: zodResolver(sendSchema),
         defaultValues: {
             nickname: "",
+            password: "",
         },
     });
 
@@ -219,26 +259,31 @@ export default function Home() {
         });
     }
 
-    async function send() {
-        if (chosenNickname !== "") {
-            console.log(chosenNickname);
-            if (
-                !(await rankingExists(
-                    chosenNickname,
-                    searchResult?.result?.albumName
-                ))
-            ) {
-                await upsertRankings(
-                    chosenNickname,
-                    searchResult?.result?.albumName,
-                    songs.map((s) => `${s.name}`)
-                );
-                toast({
-                    title: "Ранкинг успешно отправлен на сервер!",
-                });
-            } else {
-                setOpenDialog(true);
+    async function send(values: z.infer<typeof sendSchema>) {
+        if (await validatePassword(values.nickname, values.password)) {
+            if (values.nickname !== "") {
+                if (
+                    !(await rankingExists(
+                        values.nickname,
+                        searchResult?.result?.albumName
+                    ))
+                ) {
+                    await upsertRankings(
+                        values.nickname,
+                        searchResult?.result?.albumName,
+                        songs.map((s) => `${s.name}`)
+                    );
+                    toast({
+                        title: "Ранкинг успешно отправлен на сервер!",
+                    });
+                } else {
+                    setOpenDialog(true);
+                }
             }
+        } else {
+            toast({
+                title: "Неверный пароль!",
+            });
         }
     }
 
@@ -401,15 +446,15 @@ export default function Home() {
                     <TabsContent value="results">
                         <div className="flex justify-evenly place-items-center space-x-4 pb-4">
                             <Select
-                                value={chosenNicknameCopy}
+                                value={chosenNickname}
                                 onValueChange={async (value) => {
-                                    setChosenNicknameCopy(value);
+                                    setChosenNickname(value);
                                     setChosenAlbumName("");
                                     setChosenAlbum([]);
                                     if (await checkRankings(value)) {
                                         setAllAlbums(await findAlbums(value));
                                     } else {
-                                        setChosenNicknameCopy("");
+                                        setChosenNickname("");
                                         toast({
                                             title: "У этого человека нет ранкингов.",
                                         });
@@ -437,7 +482,7 @@ export default function Home() {
                                     if (value != "") {
                                         setChosenAlbum(
                                             await findRanking(
-                                                chosenNicknameCopy,
+                                                chosenNickname,
                                                 value
                                             )
                                         );
