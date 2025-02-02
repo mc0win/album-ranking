@@ -90,6 +90,7 @@ export default function Home() {
 
     const [songs, setSongs] = useState<Song[]>([]);
     const [openDialog, setOpenDialog] = useState(false);
+    const [albumSelection, setAlbumSelection] = useState(true);
     const [searchResult, setSearchResult] = useState<AlbumQuery | null>(null);
     const [chosenAlbum, setChosenAlbum] = useState<string[]>([]);
     const [allAlbums, setAllAlbums] = useState<string[]>([]);
@@ -155,9 +156,13 @@ export default function Home() {
                             name="password"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Пароль</FormLabel>
+                                    <FormLabel>Пинкод</FormLabel>
                                     <FormControl>
-                                        <Input type="password" {...field} />
+                                        <Input
+                                            type="password"
+                                            maxLength={4}
+                                            {...field}
+                                        />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -453,8 +458,10 @@ export default function Home() {
                                     setChosenAlbum([]);
                                     if (await checkRankings(value)) {
                                         setAllAlbums(await findAlbums(value));
+                                        setAlbumSelection(false);
                                     } else {
-                                        setChosenNickname("");
+                                        setAlbumSelection(true);
+                                        setAllAlbums([]);
                                         toast({
                                             title: "У этого человека нет ранкингов.",
                                         });
@@ -476,6 +483,7 @@ export default function Home() {
                                 </SelectContent>
                             </Select>
                             <Select
+                                disabled={albumSelection}
                                 value={chosenAlbumName}
                                 onValueChange={async (value) => {
                                     setChosenAlbumName(value);
