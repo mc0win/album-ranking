@@ -30,14 +30,16 @@ export async function upsertRankings(
     albumName: string | undefined,
     rankings: string[]
 ) {
-    await collection.updateOne(
-        {
-            nickname: nickname,
-            albumName: albumName,
-        },
-        { $set: { rankings: rankings } },
-        { upsert: true }
-    );
+    if (nickname != "") {
+        await collection.updateOne(
+            {
+                nickname: nickname,
+                albumName: albumName,
+            },
+            { $set: { rankings: rankings } },
+            { upsert: true }
+        );
+    }
 }
 
 export async function findRankings(nickname: string) {
@@ -63,6 +65,20 @@ export async function findRankings(nickname: string) {
         finalRankings.set(albumName, tempRankings);
     }
     return finalRankings;
+}
+
+export async function checkRankings(nickname: string) {
+    const cursor = collection.find(
+        { nickname: { $eq: nickname } },
+        {
+            projection: {
+                albumName: true,
+                rankings: true,
+                nickname: true,
+            },
+        }
+    );
+    return cursor.hasNext();
 }
 
 export async function findGlobalRankings() {

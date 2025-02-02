@@ -12,7 +12,12 @@ import React, { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { findRankings, rankingExists, upsertRankings } from "./api/database";
+import {
+    checkRankings,
+    findRankings,
+    rankingExists,
+    upsertRankings,
+} from "./api/database";
 import {
     Form,
     FormControl,
@@ -46,15 +51,6 @@ import {
 } from "@/components/ui/carousel";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuLabel,
-    DropdownMenuRadioGroup,
-    DropdownMenuRadioItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 export default function Home() {
     const { theme, setTheme } = useTheme();
@@ -71,7 +67,7 @@ export default function Home() {
     const nicknames = [
         { label: "astigm4tism", value: "astigm4tism" },
         { label: "Autiat", value: "Autiat" },
-        { label: "Aze122333", value: "Aze122333" },
+        { label: "Aze", value: "Aze" },
         { label: "borddelasolitude_exe", value: "borddelasolitude_exe" },
         { label: "HeNCaF_hm", value: "HeNCaF_hm" },
         { label: "Hindeko", value: "Hindeko" },
@@ -82,24 +78,23 @@ export default function Home() {
         { label: "mihaps", value: "mihaps" },
         { label: "morph", value: "morph" },
         { label: "MotokEkb", value: "MotokEkb" },
+        { label: "Nessid", value: "Nessid" },
         { label: "noblefoul", value: "noblefoul" },
         { label: "oddjar", value: "oddjar" },
-        { label: "oquafr", value: "oquafr" },
+        { label: "oqua", value: "oqua" },
         { label: "retsaya", value: "retsaya" },
-        { label: "sailinthesea", value: "sailinthesea" },
+        { label: "sailisy", value: "sailisy" },
         { label: "ShioriWatanabe", value: "ShioriWatanabe" },
-        { label: "smileb0y52", value: "smileb0y52" },
-        { label: "snowyowo", value: "snowyowo" },
-        { label: "takma123", value: "takma123" },
-        { label: "tehtactiq", value: "tehtactiq" },
+        { label: "smileb0y", value: "smileb0y" },
+        { label: "snowy", value: "snowy" },
+        { label: "takma", value: "takma" },
+        { label: "vomit", value: "vomit" },
         { label: "truelyalyaa", value: "truelyalyaa" },
-        { label: "UncleNessid", value: "UncleNessid" },
         { label: "water667", value: "water667" },
     ] as const;
 
     const [songs, setSongs] = useState<Song[]>([]);
     const [openDialog, setOpenDialog] = useState(false);
-    const [albumsReady, setAlbumsReady] = useState(false);
     const [searchResult, setSearchResult] = useState<AlbumQuery | null>(null);
     const [chosenNickname, setChosenNickname] = useState("");
     const [chosenNicknameCopy, setChosenNicknameCopy] = useState("");
@@ -117,60 +112,25 @@ export default function Home() {
         }
     };
 
-    function generateSongsInfo() {
-        const songsMessage = songs.map((s, i) => `${i + 1}. ${s.name}`);
-        return `${searchResult?.result?.albumName}\n\n${songsMessage?.join("\n")}`;
-    }
-
-    async function copySongs() {
-        await navigator.clipboard.writeText(generateSongsInfo());
-        toast({
-            title: "Скопировано в буфер обмена!",
-        });
-    }
-
-    function exportSongs() {
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(
-            new Blob([generateSongsInfo()], { type: "text/plain" })
-        );
-        if (searchResult == null || searchResult.result == null) {
-            throw new Error("Unreachable, for typescript");
-        }
-        link.download = searchResult?.result?.albumName;
-        link.click();
-    }
-
     const exportButtons = () => {
         if (songs.length !== 0) {
             return (
-                <div className="flex flex-col space-y-2">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="h-14">
-                                Выбрать никнейм
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-56">
-                            <DropdownMenuLabel>Никнеймы</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuRadioGroup
-                                value={chosenNickname}
-                                onValueChange={setChosenNickname}
-                            >
-                                <ScrollArea className="h-[200px]">
-                                    {nicknames.map((nickname, i) => (
-                                        <DropdownMenuRadioItem
-                                            key={i}
-                                            value={nickname.value}
-                                        >
-                                            {nickname.label}
-                                        </DropdownMenuRadioItem>
-                                    ))}
-                                </ScrollArea>
-                            </DropdownMenuRadioGroup>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                <div className="flex justify-evenly place-items-center space-x-4">
+                    <Select
+                        value={chosenNickname}
+                        onValueChange={setChosenNickname}
+                    >
+                        <SelectTrigger className="h-14">
+                            <SelectValue placeholder="Выберите никнейм" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {nicknames.map((nickname, i) => (
+                                <SelectItem key={i} value={nickname.value}>
+                                    {nickname.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                     <Button
                         variant="outline"
                         type="button"
@@ -179,23 +139,7 @@ export default function Home() {
                     >
                         Отправить на сервер
                     </Button>
-                    <div className="flex justify-evenly space-x-4">
-                        <Button
-                            variant="outline"
-                            onClick={copySongs}
-                            className="w-1/2 h-14"
-                        >
-                            Скопировать
-                        </Button>
-                        <Button
-                            variant="outline"
-                            onClick={exportSongs}
-                            className="w-1/2 h-14"
-                        >
-                            Сохранить в файл
-                        </Button>
-                    </div>
-                    <h1 className="text-center text-2xl">
+                    <h1 className="text-center text-base">
                         Для ранкинга необходимо перетаскивать треки на нужное
                         место.
                     </h1>
@@ -204,21 +148,8 @@ export default function Home() {
         }
     };
 
-    async function get() {
-        if (chosenNicknameCopy !== "") {
-            setAllRankings(await findRankings(chosenNicknameCopy));
-            if (allRankings.size !== 0) {
-                setAlbumsReady(true);
-            } else {
-                toast({
-                    title: "У этого человека нет ранкингов.",
-                });
-            }
-        }
-    }
-
     const albumRankings = () => {
-        if (albumsReady && allRankings.size !== 0) {
+        if (allRankings.size !== 0 && chosenNicknameCopy !== "") {
             return (
                 <Carousel
                     opts={{
@@ -318,12 +249,9 @@ export default function Home() {
         });
     }
 
-    async function reset() {
-        setAlbumsReady(false);
-    }
-
     async function send() {
         if (chosenNickname !== "") {
+            console.log(chosenNickname);
             if (
                 !(await rankingExists(
                     chosenNickname,
@@ -369,7 +297,6 @@ export default function Home() {
                 <Tabs
                     defaultValue="ranking"
                     className="space-y-4 w-full max-w-4xl p-4"
-                    onValueChange={reset}
                 >
                     <TabsList className="relative w-full">
                         <TabsTrigger value="ranking" className="w-1/3">
@@ -506,46 +433,37 @@ export default function Home() {
                     </TabsContent>
                     <TabsContent value="results">
                         <div className="pb-4">
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        className="w-full max-w-4xl h-12"
-                                    >
-                                        Выбрать никнейм
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent className="w-56">
-                                    <DropdownMenuLabel>
-                                        Никнеймы
-                                    </DropdownMenuLabel>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuRadioGroup
-                                        value={chosenNicknameCopy}
-                                        onValueChange={setChosenNicknameCopy}
-                                    >
-                                        <ScrollArea className="h-[200px]">
-                                            {nicknames.map((nickname, i) => (
-                                                <DropdownMenuRadioItem
-                                                    key={i}
-                                                    value={nickname.value}
-                                                >
-                                                    {nickname.label}
-                                                </DropdownMenuRadioItem>
-                                            ))}
-                                        </ScrollArea>
-                                    </DropdownMenuRadioGroup>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                            <Select
+                                value={chosenNicknameCopy}
+                                onValueChange={async (value) => {
+                                    setChosenNicknameCopy(value);
+                                    if (await checkRankings(value)) {
+                                        setAllRankings(
+                                            await findRankings(value)
+                                        );
+                                    } else {
+                                        toast({
+                                            title: "У этого человека нет ранкингов.",
+                                        });
+                                        setChosenNicknameCopy("");
+                                    }
+                                }}
+                            >
+                                <SelectTrigger className="h-14">
+                                    <SelectValue placeholder="Выберите никнейм" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {nicknames.map((nickname, i) => (
+                                        <SelectItem
+                                            key={i}
+                                            value={nickname.value}
+                                        >
+                                            {nickname.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
-                        <Button
-                            type="button"
-                            onClick={get}
-                            className="w-full max-w-4xl h-12"
-                            variant="outline"
-                        >
-                            Посмотреть ранкинги
-                        </Button>
                         {albumRankings()}
                     </TabsContent>
                     <TabsContent value="videos"></TabsContent>
