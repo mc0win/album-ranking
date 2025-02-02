@@ -201,12 +201,48 @@ export default function Home() {
                                     ))}
                                 </div>
                             </ScrollArea>
+                            <div className="flex justify-evenly space-x-4">
+                                <Button
+                                    variant="outline"
+                                    onClick={copySongs}
+                                    className="w-1/2 h-14"
+                                >
+                                    Скопировать
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={exportSongs}
+                                    className="w-1/2 h-14"
+                                >
+                                    Сохранить в файл
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
             );
         }
     };
+
+    async function copySongs() {
+        await navigator.clipboard.writeText(
+            `${chosenAlbumName}\n\n${chosenAlbum.join("\n")}`
+        );
+    }
+
+    function exportSongs() {
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(
+            new Blob([`${chosenAlbumName}\n\n${chosenAlbum.join("\n")}`], {
+                type: "text/plain",
+            })
+        );
+        if (chosenAlbumName == null || chosenAlbum == null) {
+            throw new Error("Unreachable, for typescript");
+        }
+        link.download = chosenAlbumName;
+        link.click();
+    }
 
     const linkPlaceholder = () => {
         switch (searchForm.watch("source")) {
