@@ -14,7 +14,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
     checkRankings,
-    findRankings,
+    findAlbums,
+    findRanking,
     rankingExists,
     upsertRankings,
 } from "./api/database";
@@ -42,13 +43,6 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-    Carousel,
-    CarouselContent,
-    CarouselItem,
-    CarouselNext,
-    CarouselPrevious,
-} from "@/components/ui/carousel";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -96,19 +90,15 @@ export default function Home() {
     const [songs, setSongs] = useState<Song[]>([]);
     const [openDialog, setOpenDialog] = useState(false);
     const [searchResult, setSearchResult] = useState<AlbumQuery | null>(null);
+    const [chosenAlbum, setChosenAlbum] = useState<string[]>([]);
+    const [allAlbums, setAllAlbums] = useState<string[]>([]);
+    const [chosenAlbumName, setChosenAlbumName] = useState("");
     const [chosenNickname, setChosenNickname] = useState("");
     const [chosenNicknameCopy, setChosenNicknameCopy] = useState("");
-    const [allRankings, setAllRankings] = useState(
-        new Map<string, Map<string, number>>()
-    );
 
     const notFoundLabel = () => {
         if (searchResult != null && searchResult.result == null) {
-            return (
-                <div>
-                    <p>Альбом не найден.</p>
-                </div>
-            );
+            return <div>Альбом не найден.</div>;
         }
     };
 
@@ -149,48 +139,28 @@ export default function Home() {
     };
 
     const albumRankings = () => {
-        if (allRankings.size !== 0 && chosenNicknameCopy !== "") {
+        if (chosenNicknameCopy !== "" && chosenAlbum.length > 0) {
             return (
-                <Carousel
-                    opts={{
-                        align: "start",
-                    }}
-                    className="w-full pt-4"
-                >
-                    <CarouselContent>
-                        {Array.from(allRankings.values()).map((value, i) => (
-                            <CarouselItem key={i} className="">
-                                <div className="p-1">
-                                    <Card>
-                                        <CardContent className="space-y-4 w-full max-w-4xl pt-8">
-                                            <ScrollArea className="h-[400px]">
-                                                <div className="flex flex-col items-left pl-4">
-                                                    {Array.from(
-                                                        value.keys()
-                                                    ).map((song, i) => (
-                                                        <div
-                                                            key={i}
-                                                            className="h-12 flex"
-                                                        >
-                                                            <div className="border-r border-accent-foreground w-12 h-12 flex items-center justify-center text-xl">
-                                                                {i + 1}
-                                                            </div>
-                                                            <div className="flex items-center pl-4">
-                                                                {song}
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </ScrollArea>
-                                        </CardContent>
-                                    </Card>
+                <div>
+                    <Card>
+                        <CardContent className="space-y-4 w-full max-w-4xl pt-8">
+                            <ScrollArea className="h-[400px]">
+                                <div className="flex flex-col items-left pl-4">
+                                    {chosenAlbum.map((song, i) => (
+                                        <div key={i} className="h-12 flex">
+                                            <div className="border-r border-accent-foreground w-12 h-12 flex items-center justify-center text-xl">
+                                                {i + 1}
+                                            </div>
+                                            <div className="flex items-center pl-4">
+                                                {song}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                            </CarouselItem>
-                        ))}
-                    </CarouselContent>
-                    <CarouselPrevious />
-                    <CarouselNext />
-                </Carousel>
+                            </ScrollArea>
+                        </CardContent>
+                    </Card>
+                </div>
             );
         }
     };
@@ -299,14 +269,11 @@ export default function Home() {
                     className="space-y-4 w-full max-w-4xl p-4"
                 >
                     <TabsList className="relative w-full">
-                        <TabsTrigger value="ranking" className="w-1/3">
+                        <TabsTrigger value="ranking" className="w-1/2">
                             Оценка альбома
                         </TabsTrigger>
-                        <TabsTrigger value="results" className="w-1/3">
+                        <TabsTrigger value="results" className="w-1/2">
                             Ранкинги
-                        </TabsTrigger>
-                        <TabsTrigger value="videos" className="w-1/3">
-                            Видео
                         </TabsTrigger>
                     </TabsList>
                     <TabsContent value="ranking">
@@ -432,20 +399,20 @@ export default function Home() {
                         </div>
                     </TabsContent>
                     <TabsContent value="results">
-                        <div className="pb-4">
+                        <div className="flex justify-evenly place-items-center space-x-4 pb-4">
                             <Select
                                 value={chosenNicknameCopy}
                                 onValueChange={async (value) => {
                                     setChosenNicknameCopy(value);
+                                    setChosenAlbumName("");
+                                    setChosenAlbum([]);
                                     if (await checkRankings(value)) {
-                                        setAllRankings(
-                                            await findRankings(value)
-                                        );
+                                        setAllAlbums(await findAlbums(value));
                                     } else {
+                                        setChosenNicknameCopy("");
                                         toast({
                                             title: "У этого человека нет ранкингов.",
                                         });
-                                        setChosenNicknameCopy("");
                                     }
                                 }}
                             >
@@ -463,10 +430,34 @@ export default function Home() {
                                     ))}
                                 </SelectContent>
                             </Select>
+                            <Select
+                                value={chosenAlbumName}
+                                onValueChange={async (value) => {
+                                    setChosenAlbumName(value);
+                                    if (value != "") {
+                                        setChosenAlbum(
+                                            await findRanking(
+                                                chosenNicknameCopy,
+                                                value
+                                            )
+                                        );
+                                    }
+                                }}
+                            >
+                                <SelectTrigger className="h-14">
+                                    <SelectValue placeholder="Выберите альбом" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {allAlbums.map((value, i) => (
+                                        <SelectItem key={i} value={value}>
+                                            {value}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                         {albumRankings()}
                     </TabsContent>
-                    <TabsContent value="videos"></TabsContent>
                 </Tabs>
             </div>
         </>

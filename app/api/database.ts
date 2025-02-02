@@ -42,7 +42,27 @@ export async function upsertRankings(
     }
 }
 
-export async function findRankings(nickname: string) {
+export async function findRanking(nickname: string, albumName?: string) {
+    const cursor = collection.find(
+        { nickname: { $eq: nickname }, albumName: { $eq: albumName } },
+        {
+            projection: {
+                albumName: true,
+                rankings: true,
+                nickname: true,
+            },
+        }
+    );
+    let finalRankings: string[] = [];
+    for await (const doc of cursor) {
+        for await (const song of doc.rankings) {
+            finalRankings.push(song);
+        }
+    }
+    return finalRankings;
+}
+
+export async function findAlbums(nickname: string) {
     const cursor = collection.find(
         { nickname: { $eq: nickname } },
         {
@@ -53,18 +73,11 @@ export async function findRankings(nickname: string) {
             },
         }
     );
-
-    let finalRankings = new Map<string, Map<string, number>>();
-
+    let albums: string[] = [];
     for await (const doc of cursor) {
-        let albumName: string = doc.albumName;
-        let tempRankings = new Map<string, number>();
-        for await (const song of doc.rankings) {
-            tempRankings.set(song, doc.rankings.indexOf(song));
-        }
-        finalRankings.set(albumName, tempRankings);
+        albums.push(doc.albumName);
     }
-    return finalRankings;
+    return albums;
 }
 
 export async function checkRankings(nickname: string) {
@@ -79,61 +92,4 @@ export async function checkRankings(nickname: string) {
         }
     );
     return cursor.hasNext();
-}
-
-export async function findGlobalRankings() {
-    const cursor = collection.find(
-        {},
-        {
-            projection: {
-                albumName: true,
-                rankings: true,
-                nickname: true,
-            },
-        }
-    );
-
-    let finalRankings = new Map<string, Map<string, number>>();
-
-    for await (const doc of cursor) {
-        let albumName: string = doc.albumName;
-        let personCount: number = 0;
-        if (!finalRankings.has(albumName)) {
-            let tempRankings = new Map<string, number>();
-            for await (const song of doc.rankings) {
-                tempRankings.set(song, doc.rankings.indexOf(song));
-            }
-            finalRankings.set(albumName, tempRankings);
-            personCount += 1;
-        } else {
-            let tempRankings = finalRankings.get(albumName);
-            if (tempRankings != undefined) {
-                if (!(await cursor.hasNext())) {
-                    personCount += 1;
-                }
-                for await (const song_1 of doc.rankings) {
-                    if (await cursor.hasNext()) {
-                        tempRankings.set(
-                            song_1,
-                            tempRankings.get(song_1) +
-                                doc.rankings.indexOf(song_1)
-                        );
-                    } else {
-                        tempRankings.set(
-                            song_1,
-                            (tempRankings.get(song_1) +
-                                doc.rankings.indexOf(song_1)) /
-                                personCount
-                        );
-                    }
-                }
-                let sortedRankings = new Map(
-                    Array.from(tempRankings).sort((a, b) => a[1] - b[1])
-                );
-                finalRankings.set(albumName, sortedRankings);
-                personCount += 1;
-            }
-        }
-    }
-    return finalRankings;
 }
