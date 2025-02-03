@@ -15,7 +15,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
     checkRankings,
     findAlbums,
+    findAllAlbums,
     findRanking,
+    findSongs,
+    findTotalRankings,
     rankingExists,
     upsertRankings,
 } from "./api/database";
@@ -45,7 +48,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { validatePassword } from "@/app/api/accounts";
+import { generatePasswords, validatePassword } from "@/app/api/accounts";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function Home() {
     const { theme, setTheme } = useTheme();
@@ -91,10 +95,19 @@ export default function Home() {
     const [songs, setSongs] = useState<Song[]>([]);
     const [openDialog, setOpenDialog] = useState(false);
     const [albumSelection, setAlbumSelection] = useState(true);
+    const [songSelection, setSongSelection] = useState(true);
+    const [anotherAlbumSelection, setAnotherAlbumSelection] = useState(true);
     const [searchResult, setSearchResult] = useState<AlbumQuery | null>(null);
     const [chosenAlbum, setChosenAlbum] = useState<string[]>([]);
     const [allAlbums, setAllAlbums] = useState<string[]>([]);
+    const [totalRankings, setTotalRankings] = useState(
+        new Map<string, Map<string, number>>()
+    );
+    const [allUserAlbums, setAllUserAlbums] = useState<string[]>([]);
+    const [allSongs, setAllSongs] = useState<string[]>([]);
     const [chosenAlbumName, setChosenAlbumName] = useState("");
+    const [chosenSong, setChosenSong] = useState("");
+    const [anotherChosenAlbumName, setAnotherChosenAlbumName] = useState("");
     const [chosenNickname, setChosenNickname] = useState("");
 
     const notFoundLabel = () => {
@@ -186,11 +199,14 @@ export default function Home() {
             return (
                 <div>
                     <Card>
-                        <CardContent className="space-y-4 w-full max-w-4xl pt-8">
-                            <ScrollArea className="h-[400px]">
-                                <div className="flex flex-col items-left pl-4">
+                        <CardContent className="space-y-4 w-full max-w-4xl pt-8 h-[600px]">
+                            <ScrollArea className="h-[470px]">
+                                <div className="border border-accent-foreground rounded-lg">
                                     {chosenAlbum.map((song, i) => (
-                                        <div key={i} className="h-12 flex">
+                                        <div
+                                            key={i}
+                                            className="[&:not(:last-child)]:border-b border-accent-foreground h-12 flex"
+                                        >
                                             <div className="border-r border-accent-foreground w-12 h-12 flex items-center justify-center text-xl">
                                                 {i + 1}
                                             </div>
@@ -223,6 +239,54 @@ export default function Home() {
             );
         }
     };
+    const totalAlbumRankings = () => {
+        if (
+            anotherChosenAlbumName != "" &&
+            totalRankings.size > 0 &&
+            chosenSong != ""
+        ) {
+            let i = Array.from(totalRankings.keys()).indexOf(chosenSong);
+            let value = Array.from(totalRankings.values())[i];
+            return (
+                <div className="p-1">
+                    <Card>
+                        <CardContent className="space-y-4 w-full max-w-4xl pt-8 h-[600px]">
+                            <div className="text-xl">
+                                {Array.from(totalRankings.keys())[i]}
+                            </div>
+                            <div>
+                                Средний рейтинг:{" "}
+                                {(
+                                    Math.round(
+                                        (Array.from(value.values()).reduce(
+                                            (sum, p) => sum + p
+                                        ) /
+                                            Array.from(value.values()).length) *
+                                            100
+                                    ) / 100
+                                ).toFixed(2)}
+                            </div>
+
+                            {Array.from(value.entries()).map((item, i) => (
+                                <div key={i} className="flex">
+                                    <Avatar>
+                                        <AvatarImage
+                                            src={`../${item[0]}.jpg`}
+                                            className="flex items-center justify-center"
+                                        />
+                                        <AvatarFallback>CN</AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex items-center pl-4 text-lg">
+                                        {item[1]}
+                                    </div>
+                                </div>
+                            ))}
+                        </CardContent>
+                    </Card>
+                </div>
+            );
+        }
+    };
 
     async function copySongs() {
         await navigator.clipboard.writeText(
@@ -237,7 +301,7 @@ export default function Home() {
                 type: "text/plain",
             })
         );
-        if (chosenAlbumName == null || chosenAlbum == null) {
+        if (chosenAlbumName == "" && chosenAlbum.length == 0) {
             throw new Error("Unreachable, for typescript");
         }
         link.download = chosenAlbumName;
@@ -293,6 +357,7 @@ export default function Home() {
         await upsertRankings(
             sendForm.getValues().nickname,
             searchResult?.result?.albumName,
+            searchResult?.result?.songs.map((s) => `${s.name}`),
             songs.map((s) => `${s.name}`)
         );
         toast({
@@ -300,6 +365,9 @@ export default function Home() {
         });
     }
 
+    async function gen() {
+        await generatePasswords();
+    }
     async function send(values: z.infer<typeof sendSchema>) {
         if (await validatePassword(values.nickname, values.password)) {
             if (values.nickname !== "") {
@@ -312,6 +380,7 @@ export default function Home() {
                     await upsertRankings(
                         values.nickname,
                         searchResult?.result?.albumName,
+                        searchResult?.result?.songs.map((s) => `${s.name}`),
                         songs.map((s) => `${s.name}`)
                     );
                     toast({
@@ -353,25 +422,33 @@ export default function Home() {
                 <Tabs
                     defaultValue="ranking"
                     className="space-y-4 w-full max-w-4xl p-4"
+                    onValueChange={async () => {
+                        setAllAlbums(await findAllAlbums());
+                        console.log("a");
+                        setAnotherAlbumSelection(false);
+                    }}
                 >
                     <TabsList className="relative w-full">
-                        <TabsTrigger value="ranking" className="w-1/2">
+                        <Toggle
+                            variant="outline"
+                            aria-label="Toggle theme"
+                            onClick={themeSwitch}
+                            className="w-1/9"
+                        >
+                            <SunMoon />
+                        </Toggle>
+                        <TabsTrigger value="ranking" className="w-1/3">
                             Оценка альбома
                         </TabsTrigger>
-                        <TabsTrigger value="results" className="w-1/2">
+                        <TabsTrigger value="rankings" className="w-1/3">
                             Ранкинги
+                        </TabsTrigger>
+                        <TabsTrigger value="totalRankings" className="w-1/3">
+                            Ранкинги (общие)
                         </TabsTrigger>
                     </TabsList>
                     <TabsContent value="ranking">
                         <div className="flex flex-col items-center p-2 space-y-4">
-                            <Toggle
-                                variant="outline"
-                                aria-label="Toggle theme"
-                                onClick={themeSwitch}
-                                className="w-full max-w-4xl h-12"
-                            >
-                                <SunMoon />
-                            </Toggle>
                             <Form {...searchForm}>
                                 <form
                                     onSubmit={searchForm.handleSubmit(search)}
@@ -484,7 +561,7 @@ export default function Home() {
                             </div>
                         </div>
                     </TabsContent>
-                    <TabsContent value="results">
+                    <TabsContent value="rankings">
                         <div className="flex justify-evenly place-items-center space-x-4 pb-4">
                             <Select
                                 value={chosenNickname}
@@ -493,11 +570,13 @@ export default function Home() {
                                     setChosenAlbumName("");
                                     setChosenAlbum([]);
                                     if (await checkRankings(value)) {
-                                        setAllAlbums(await findAlbums(value));
+                                        setAllUserAlbums(
+                                            await findAlbums(value)
+                                        );
                                         setAlbumSelection(false);
                                     } else {
                                         setAlbumSelection(true);
-                                        setAllAlbums([]);
+                                        setAllUserAlbums([]);
                                         toast({
                                             title: "У этого человека нет ранкингов.",
                                         });
@@ -537,7 +616,7 @@ export default function Home() {
                                     <SelectValue placeholder="Выберите альбом" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {allAlbums.map((value, i) => (
+                                    {allUserAlbums.map((value, i) => (
                                         <SelectItem key={i} value={value}>
                                             {value}
                                         </SelectItem>
@@ -546,6 +625,52 @@ export default function Home() {
                             </Select>
                         </div>
                         {albumRankings()}
+                    </TabsContent>
+                    <TabsContent value="totalRankings">
+                        <div className="flex justify-evenly place-items-center space-x-4 pb-4">
+                            <Select
+                                disabled={anotherAlbumSelection}
+                                value={anotherChosenAlbumName}
+                                onValueChange={async (value) => {
+                                    setAnotherChosenAlbumName(value);
+                                    if (value != "") {
+                                        setTotalRankings(
+                                            await findTotalRankings(value)
+                                        );
+                                        setAllSongs(await findSongs(value));
+                                        setSongSelection(false);
+                                    }
+                                }}
+                            >
+                                <SelectTrigger className="h-14">
+                                    <SelectValue placeholder="Выберите альбом" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {allAlbums.map((value, i) => (
+                                        <SelectItem key={i} value={value}>
+                                            {value}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Select
+                                disabled={songSelection}
+                                value={chosenSong}
+                                onValueChange={setChosenSong}
+                            >
+                                <SelectTrigger className="h-14">
+                                    <SelectValue placeholder="Выберите трек" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {allSongs.map((value, i) => (
+                                        <SelectItem key={i} value={value}>
+                                            {value}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        {totalAlbumRankings()}
                     </TabsContent>
                 </Tabs>
             </div>

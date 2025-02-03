@@ -28,6 +28,7 @@ export async function rankingExists(
 export async function upsertRankings(
     nickname: string,
     albumName: string | undefined,
+    defaultRankings: string[] | undefined,
     rankings: string[]
 ) {
     if (nickname != "") {
@@ -35,6 +36,7 @@ export async function upsertRankings(
             {
                 nickname: nickname,
                 albumName: albumName,
+                defaultRankings: defaultRankings,
             },
             { $set: { rankings: rankings } },
             { upsert: true }
@@ -42,14 +44,12 @@ export async function upsertRankings(
     }
 }
 
-export async function findRanking(nickname: string, albumName?: string) {
+export async function findRanking(nickname: string, albumName: string) {
     const cursor = collection.find(
         { nickname: { $eq: nickname }, albumName: { $eq: albumName } },
         {
             projection: {
-                albumName: true,
                 rankings: true,
-                nickname: true,
             },
         }
     );
@@ -62,14 +62,50 @@ export async function findRanking(nickname: string, albumName?: string) {
     return finalRankings;
 }
 
+export async function findTotalRankings(albumName: string) {
+    let defaultRankings = (
+        await collection
+            .find(
+                { albumName: { $eq: albumName } },
+                {
+                    projection: {
+                        defaultRankings: true,
+                        rankings: true,
+                        nickname: true,
+                    },
+                }
+            )
+            .next()
+    )?.defaultRankings;
+
+    let finalRankings = new Map<string, Map<string, number>>();
+    for await (const song of defaultRankings) {
+        let users = new Map<string, number>();
+        const cursor = collection.find(
+            { albumName: { $eq: albumName } },
+            {
+                projection: {
+                    defaultRankings: true,
+                    rankings: true,
+                    nickname: true,
+                },
+            }
+        );
+        for await (const doc of cursor) {
+            users.set(doc.nickname, doc.rankings.indexOf(song) + 1);
+        }
+        finalRankings.set(song, users);
+    }
+
+    return finalRankings;
+}
+
 export async function findAlbums(nickname: string) {
     const cursor = collection.find(
         { nickname: { $eq: nickname } },
         {
             projection: {
                 albumName: true,
-                rankings: true,
-                nickname: true,
             },
         }
     );
@@ -80,16 +116,43 @@ export async function findAlbums(nickname: string) {
     return albums;
 }
 
-export async function checkRankings(nickname: string) {
+export async function findSongs(albumName: string) {
+    const cursor = await collection
+        .find(
+            { albumName: { $eq: albumName } },
+            {
+                projection: {
+                    defaultRankings: true,
+                },
+            }
+        )
+        .next();
+    let songs: string[] = [];
+    for await (const song of cursor?.defaultRankings) {
+        songs.push(song);
+    }
+    return songs;
+}
+
+export async function findAllAlbums() {
     const cursor = collection.find(
-        { nickname: { $eq: nickname } },
+        {},
         {
             projection: {
                 albumName: true,
-                rankings: true,
-                nickname: true,
             },
         }
     );
+    let albums: string[] = [];
+    for await (const doc of cursor) {
+        if (albums.indexOf(doc.albumName) == -1) {
+            albums.push(doc.albumName);
+        }
+    }
+    return albums;
+}
+
+export async function checkRankings(nickname: string) {
+    const cursor = collection.find({ nickname: { $eq: nickname } });
     return cursor.hasNext();
 }
