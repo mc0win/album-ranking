@@ -45,19 +45,20 @@ export async function upsertRankings(
 }
 
 export async function findRanking(nickname: string, albumName: string) {
-    const cursor = collection.find(
-        { nickname: { $eq: nickname }, albumName: { $eq: albumName } },
-        {
-            projection: {
-                rankings: true,
-            },
-        }
-    );
     let finalRankings: string[] = [];
-    for await (const doc of cursor) {
-        for (const song of doc.rankings) {
-            finalRankings.push(song);
-        }
+    for (const song of (
+        await collection
+            .find(
+                { nickname: { $eq: nickname }, albumName: { $eq: albumName } },
+                {
+                    projection: {
+                        rankings: true,
+                    },
+                }
+            )
+            .next()
+    )?.rankings) {
+        finalRankings.push(song);
     }
     return finalRankings;
 }
@@ -81,7 +82,7 @@ export async function findTotalRankings(albumName: string) {
     let finalRankings = new Map<string, Map<string, number>>();
     for (const song of defaultRankings) {
         let users = new Map<string, number>();
-        const cursor = collection.find(
+        for await (const doc of collection.find(
             { albumName: { $eq: albumName } },
             {
                 projection: {
@@ -90,8 +91,7 @@ export async function findTotalRankings(albumName: string) {
                     nickname: true,
                 },
             }
-        );
-        for await (const doc of cursor) {
+        )) {
             users.set(doc.nickname, doc.rankings.indexOf(song) + 1);
         }
         finalRankings.set(song, users);
@@ -101,50 +101,49 @@ export async function findTotalRankings(albumName: string) {
 }
 
 export async function findAlbums(nickname: string) {
-    const cursor = collection.find(
+    let albums: string[] = [];
+    for await (const doc of collection.find(
         { nickname: { $eq: nickname } },
         {
             projection: {
                 albumName: true,
             },
         }
-    );
-    let albums: string[] = [];
-    for await (const doc of cursor) {
+    )) {
         albums.push(doc.albumName);
     }
     return albums;
 }
 
 export async function findSongs(albumName: string) {
-    const cursor = await collection
-        .find(
-            { albumName: { $eq: albumName } },
-            {
-                projection: {
-                    defaultRankings: true,
-                },
-            }
-        )
-        .next();
     let songs: string[] = [];
-    for await (const song of cursor?.defaultRankings) {
+    for await (const song of (
+        await collection
+            .find(
+                { albumName: { $eq: albumName } },
+                {
+                    projection: {
+                        defaultRankings: true,
+                    },
+                }
+            )
+            .next()
+    )?.defaultRankings) {
         songs.push(song);
     }
     return songs;
 }
 
 export async function findAllAlbums() {
-    const cursor = collection.find(
+    let albums: string[] = [];
+    for await (const doc of collection.find(
         {},
         {
             projection: {
                 albumName: true,
             },
         }
-    );
-    let albums: string[] = [];
-    for await (const doc of cursor) {
+    )) {
         if (albums.indexOf(doc.albumName) == -1) {
             albums.push(doc.albumName);
         }
