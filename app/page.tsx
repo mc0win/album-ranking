@@ -48,7 +48,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { generatePasswords, validatePassword } from "@/app/api/accounts";
+import { validatePassword } from "@/app/api/accounts";
 export default function Home() {
     const { theme, setTheme } = useTheme();
     const { toast } = useToast();
@@ -364,10 +364,6 @@ export default function Home() {
         });
     }
 
-    async function gen() {
-        await generatePasswords();
-    }
-
     async function reset() {
         setSongs([]);
         setOpenDialog(false);
@@ -417,9 +413,6 @@ export default function Home() {
 
     return (
         <>
-            <Button variant="outline" onClick={gen}>
-                gen
-            </Button>
             <Dialog open={openDialog} onOpenChange={setOpenDialog}>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
