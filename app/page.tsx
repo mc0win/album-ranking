@@ -49,8 +49,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { generatePasswords, validatePassword } from "@/app/api/accounts";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-
 export default function Home() {
     const { theme, setTheme } = useTheme();
     const { toast } = useToast();
@@ -66,7 +64,7 @@ export default function Home() {
     const nicknames = [
         { label: "astigm4tism", value: "astigm4tism" },
         { label: "Autiat", value: "Autiat" },
-        { label: "Aze", value: "Aze" },
+        { label: "Aze122333", value: "Aze122333" },
         { label: "borddelasolitude_exe", value: "borddelasolitude_exe" },
         { label: "HeNCaF_hm", value: "HeNCaF_hm" },
         { label: "Hindeko", value: "Hindeko" },
@@ -75,19 +73,18 @@ export default function Home() {
         { label: "joosenitsa", value: "joosenitsa" },
         { label: "mcowin", value: "mcowin" },
         { label: "mihaps", value: "mihaps" },
-        { label: "morph", value: "morph" },
         { label: "MotokEkb", value: "MotokEkb" },
-        { label: "Nessid", value: "Nessid" },
         { label: "noblefoul", value: "noblefoul" },
         { label: "oddjar", value: "oddjar" },
-        { label: "oqua", value: "oqua" },
+        { label: "oquafr", value: "oquafr" },
+        { label: "pentachloronitrobenzene", value: "pentachloronitrobenzene" },
         { label: "retsaya", value: "retsaya" },
-        { label: "sailisy", value: "sailisy" },
+        { label: "sailinthesea", value: "sailinthesea" },
         { label: "ShioriWatanabe", value: "ShioriWatanabe" },
-        { label: "smileb0y", value: "smileb0y" },
+        { label: "smileb0y52", value: "smileb0y52" },
         { label: "snowy", value: "snowy" },
-        { label: "takma", value: "takma" },
-        { label: "vomit", value: "vomit" },
+        { label: "takma123", value: "takma123" },
+        { label: "tehtactiq", value: "tehtactiq" },
         { label: "truelyalyaa", value: "truelyalyaa" },
         { label: "water667", value: "water667" },
     ] as const;
@@ -249,8 +246,8 @@ export default function Home() {
             let value = Array.from(totalRankings.values())[i];
             return (
                 <div className="p-1">
-                    <Card>
-                        <CardContent className="space-y-4 w-full max-w-4xl pt-8 h-[600px]">
+                    <Card className="space-y-4 w-full max-w-4xl pt-8 h-[600px]">
+                        <CardContent>
                             <div className="text-xl">
                                 {Array.from(totalRankings.keys())[i]}
                             </div>
@@ -266,21 +263,23 @@ export default function Home() {
                                     ) / 100
                                 ).toFixed(2)}
                             </div>
-
-                            {Array.from(value.entries()).map((item, i) => (
-                                <div key={i} className="flex">
-                                    <Avatar>
-                                        <AvatarImage
+                            <div className="flex flex-col flex-wrap h-[500px] pt-2">
+                                {Array.from(value.entries()).map((item, i) => (
+                                    <div
+                                        key={i}
+                                        className="inline-block text-center space-y-8"
+                                    >
+                                        <img
                                             src={`../${item[0]}.jpg`}
-                                            className="flex items-center justify-center"
+                                            className="inline-block self-center w-12 h-12 rounded-full"
+                                            alt="CN"
                                         />
-                                        <AvatarFallback>CN</AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex items-center pl-4 text-lg">
-                                        {item[1]}
+                                        <p className="inline-block self-center pl-4 text-xl">
+                                            {item[1]}
+                                        </p>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
@@ -368,6 +367,25 @@ export default function Home() {
     async function gen() {
         await generatePasswords();
     }
+
+    async function reset() {
+        setSongs([]);
+        setOpenDialog(false);
+        setAlbumSelection(true);
+        setSongSelection(true);
+        setAnotherAlbumSelection(true);
+        setSearchResult(null);
+        setChosenAlbum([]);
+        setAllAlbums([]);
+        setTotalRankings(new Map<string, Map<string, number>>());
+        setAllUserAlbums([]);
+        setAllSongs([]);
+        setChosenAlbumName("");
+        setChosenSong("");
+        setAnotherChosenAlbumName("");
+        setChosenNickname("");
+    }
+
     async function send(values: z.infer<typeof sendSchema>) {
         if (await validatePassword(values.nickname, values.password)) {
             if (values.nickname !== "") {
@@ -399,6 +417,9 @@ export default function Home() {
 
     return (
         <>
+            <Button variant="outline" onClick={gen}>
+                gen
+            </Button>
             <Dialog open={openDialog} onOpenChange={setOpenDialog}>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
@@ -423,8 +444,8 @@ export default function Home() {
                     defaultValue="ranking"
                     className="space-y-4 w-full max-w-4xl p-4"
                     onValueChange={async () => {
+                        await reset();
                         setAllAlbums(await findAllAlbums());
-                        console.log("a");
                         setAnotherAlbumSelection(false);
                     }}
                 >
@@ -632,6 +653,8 @@ export default function Home() {
                                 disabled={anotherAlbumSelection}
                                 value={anotherChosenAlbumName}
                                 onValueChange={async (value) => {
+                                    setSongSelection(true);
+                                    setChosenSong("");
                                     setAnotherChosenAlbumName(value);
                                     if (value != "") {
                                         setTotalRankings(

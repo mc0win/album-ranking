@@ -55,7 +55,7 @@ export async function findRanking(nickname: string, albumName: string) {
     );
     let finalRankings: string[] = [];
     for await (const doc of cursor) {
-        for await (const song of doc.rankings) {
+        for (const song of doc.rankings) {
             finalRankings.push(song);
         }
     }
@@ -79,7 +79,7 @@ export async function findTotalRankings(albumName: string) {
     )?.defaultRankings;
 
     let finalRankings = new Map<string, Map<string, number>>();
-    for await (const song of defaultRankings) {
+    for (const song of defaultRankings) {
         let users = new Map<string, number>();
         const cursor = collection.find(
             { albumName: { $eq: albumName } },
